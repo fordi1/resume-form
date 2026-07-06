@@ -1,0 +1,27 @@
+{
+  "name": "recruitment-assessment-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "فرانت‌اند سیستم مدیریت و ارزیابی متقاضیان استخدام (Next.js + TypeScript + Tailwind)",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "14.2.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "lucide-react": "^0.408.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.3",
+    "@types/node": "^20.14.10",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "tailwindcss": "^3.4.6",
+    "postcss": "^8.4.39",
+    "autoprefixer": "^10.4.19"
+  }
+}

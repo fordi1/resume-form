@@ -1,0 +1,338 @@
+// ============================================================================
+// Prisma Schema — سیستم مدیریت و ارزیابی متقاضیان استخدام (نسخه اول / MVP)
+// ============================================================================
+// دیتابیس: SQLite (فقط یک فایل، بدون نیاز به نصب سرور)
+// در آینده برای تبدیل به PostgreSQL کافیست provider را تغییر دهید.
+//
+// نکته مهم درباره SQLite:
+//   - SQLite در Prisma از enum و آرایه (scalar list) پشتیبانی نمی‌کند.
+//   - به همین دلیل مقادیر enum را به صورت String ذخیره می‌کنیم و مقادیر مجاز
+//     را در کامنت هر فیلد نوشته‌ایم.
+//   - داده‌های آرایه‌ای/انعطاف‌پذیر را به صورت String (JSON) نگه می‌داریم.
+//   - این کار مهاجرت بعدی به PostgreSQL را هم ساده نگه می‌دارد.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// 1) کارفرما (Employer) — احراز هویت
+// ============================================================================
+model Employer {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String // هش رمز عبور (bcrypt) — هرگز رمز خام ذخیره نشود
+  fullName  String?
+  company   String?
+  phone     String?
+
+  isActive  Boolean  @default(true)
+
+  // بازیابی رمز عبور
+  resetToken        String?
+  resetTokenExpiry  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  jobPositions JobPosition[]
+
+  @@map("employers")
+}
+
+// ============================================================================
+// 2) موقعیت شغلی (JobPosition)
+// ============================================================================
+model JobPosition {
+  id          String  @id @default(cuid())
+  employerId  String
+  employer    Employer @relation(fields: [employerId], references: [id], onDelete: Cascade)
+
+  title       String // عنوان شغل
+  description String? // توضیحات شغل
+
+  // مهارت‌های موردنیاز — به صورت JSON آرایه‌ای از رشته‌ها ذخیره می‌شود
+  // مثال: ["Docker","PostgreSQL","Node.js"]
+  requiredSkills String @default("[]")
+
+  minExperience  Int?    // حداقل سابقه (سال)
+  salaryMin      Int?    // حداقل محدوده حقوق
+  salaryMax      Int?    // حداکثر محدوده حقوق
+
+  // نوع همکاری — مقادیر مجاز: FULL_TIME | PART_TIME | REMOTE | CONTRACT | INTERNSHIP
+  employmentType String?
+
+  location    String? // محل کار
+
+  isActive    Boolean @default(true) // فعال / غیرفعال
+
+  // لینک اختصاصی: company.com/apply/{slug}
+  slug        String  @unique
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  form           Form?
+  questions      Question[]
+  rejectionRules RejectionRule[]
+  applications   Application[]
+
+  @@map("job_positions")
+}
+
+// ============================================================================
+// 3) فرم استخدام (Form) — هر موقعیت شغلی یک فرم دارد
+// ============================================================================
+model Form {
+  id            String   @id @default(cuid())
+  jobPositionId String   @unique
+  jobPosition   JobPosition @relation(fields: [jobPositionId], references: [id], onDelete: Cascade)
+
+  title       String?
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  questions Question[]
+
+  @@map("forms")
+}
+
+// ============================================================================
+// 4) سؤالات فرم (Question)
+// ============================================================================
+model Question {
+  id            String @id @default(cuid())
+  formId        String
+  form          Form   @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  // برای دسترسی مستقیم و فیلترها، ارجاع به موقعیت شغلی هم نگه داشته می‌شود
+  jobPositionId String
+  jobPosition   JobPosition @relation(fields: [jobPositionId], references: [id], onDelete: Cascade)
+
+  // نوع سؤال — مقادیر مجاز:
+  // SHORT_TEXT | LONG_TEXT | NUMBER | SINGLE_CHOICE | MULTI_CHOICE | BOOLEAN | LINK | FILE_UPLOAD
+  type        String
+
+  label       String  // متن سؤال
+  helpText    String? // توضیح کمکی
+  isRequired  Boolean @default(false)
+
+  // ترتیب نمایش سؤال (قابل تغییر)
+  order       Int     @default(0)
+
+  // گزینه‌ها (برای SINGLE_CHOICE / MULTI_CHOICE) — JSON آرایه‌ای
+  // مثال: [{"value":"docker","label":"Docker"},{"value":"k8s","label":"Kubernetes"}]
+  options     String  @default("[]")
+
+  // کلید مفهومی برای موتور ارزیابی (اختیاری) مثل "experience_years" یا "has_docker"
+  fieldKey    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  scoringRules   ScoringRule[]
+  rejectionRules RejectionRule[]
+  answers        Answer[]
+
+  @@map("questions")
+}
+
+// ============================================================================
+// 5) قوانین امتیازدهی (ScoringRule) — موتور امتیازدهی
+// ============================================================================
+// هیچ امتیازی داخل کد ثابت نیست؛ همه از اینجا خوانده می‌شود.
+model ScoringRule {
+  id         String   @id @default(cuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  // عملگر شرط — مقادیر مجاز:
+  // EQUALS | NOT_EQUALS | CONTAINS | GREATER_THAN | GREATER_OR_EQUAL |
+  // LESS_THAN | LESS_OR_EQUAL | IS_TRUE | IS_FALSE | IN
+  operator   String
+
+  // مقدار مرجع برای مقایسه (به صورت رشته ذخیره می‌شود؛ موتور بر اساس نوع سؤال تفسیر می‌کند)
+  // مثال: "5"  یا  "Docker"  یا  "true"
+  value      String?
+
+  // امتیازی که در صورت برقراری شرط اضافه/کم می‌شود (می‌تواند منفی باشد)
+  points     Int      @default(0)
+
+  label      String?  // توضیح قانون برای نمایش در پنل
+  isActive   Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("scoring_rules")
+}
+
+// ============================================================================
+// 6) قوانین رد خودکار (RejectionRule)
+// ============================================================================
+model RejectionRule {
+  id            String   @id @default(cuid())
+  jobPositionId String
+  jobPosition   JobPosition @relation(fields: [jobPositionId], references: [id], onDelete: Cascade)
+
+  // قانون می‌تواند به یک سؤال مشخص وابسته باشد (اختیاری)
+  questionId    String?
+  question      Question? @relation(fields: [questionId], references: [id], onDelete: SetNull)
+
+  // عملگر شرط — همان مجموعه عملگرهای ScoringRule
+  operator      String
+  value         String?
+
+  reason        String?  // دلیل رد که ذخیره/نمایش داده می‌شود
+  isActive      Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("rejection_rules")
+}
+
+// ============================================================================
+// 7) متقاضی (Applicant) — بدون نیاز به ثبت‌نام
+// ============================================================================
+model Applicant {
+  id        String  @id @default(cuid())
+  fullName  String
+  email     String?
+  phone     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  applications Application[]
+
+  @@map("applicants")
+}
+
+// ============================================================================
+// 8) درخواست استخدام (Application)
+// ============================================================================
+model Application {
+  id            String   @id @default(cuid())
+  applicantId   String
+  applicant     Applicant @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+
+  jobPositionId String
+  jobPosition   JobPosition @relation(fields: [jobPositionId], references: [id], onDelete: Cascade)
+
+  // فایل رزومه (در نسخه اول فقط ذخیره می‌شود)
+  resumeFilePath String?
+  resumeFileName String?
+
+  // فیلدهای داخلی فرم متقاضی
+  experienceYears Int?    // سابقه کاری (سال) که متقاضی وارد کرده
+  // مهارت‌هایی که متقاضی از میان مهارت‌های موردنیاز شغل تیک زده — JSON آرایه‌ای
+  skills          String  @default("[]")
+
+  // نتیجه ارزیابی (توسط Assessment Engine پر می‌شود)
+  finalScore    Int?     // امتیاز نهایی
+  // دسته‌بندی — مقادیر مجاز: EXCELLENT | VERY_GOOD | GOOD | AVERAGE | REJECTED
+  category      String?
+
+  // وضعیت — مقادیر مجاز:
+  // PENDING | REJECTED_AUTO | UNDER_REVIEW | SHORTLISTED | ACCEPTED | REJECTED
+  status        String   @default("PENDING")
+
+  rejectionReason String? // اگر رد خودکار شده باشد
+
+  // جزئیات محاسبه امتیاز برای شفافیت (JSON) — مثلاً کدام قوانین اعمال شدند
+  scoreBreakdown String?
+
+  // ---- فیلدهای آماده برای هوش مصنوعی (نسخه‌های بعدی) ----
+  resumeText     String?  // متن استخراج‌شده از PDF رزومه
+  aiScore        Int?     // امتیاز پیشنهادی هوش مصنوعی
+  aiSummary      String?  // خلاصه وضعیت متقاضی توسط AI
+  aiAnalysis     String?  // تحلیل کامل به صورت JSON
+  aiProcessedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  answers Answer[]
+  result  AssessmentResult?
+
+  @@index([jobPositionId])
+  @@index([status])
+  @@index([finalScore])
+  @@map("applications")
+}
+
+// ============================================================================
+// 10) نتیجه ارزیابی (AssessmentResult)
+// ============================================================================
+// خروجی ماژول Assessment Engine اینجا ذخیره می‌شود.
+// هر درخواست دقیقاً یک نتیجه ارزیابی دارد (رابطه یک‌به‌یک).
+// این جداسازی باعث می‌شود در آینده بتوان موتور امتیازدهی را با هوش مصنوعی
+// عوض کرد، بدون اینکه ساختار درخواست تغییر کند.
+model AssessmentResult {
+  id            String   @id @default(cuid())
+  applicationId String   @unique
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  // تصمیم موتور — مقادیر مجاز: REJECTED_AUTO | SCORED
+  decision      String
+
+  finalScore    Int      @default(0) // امتیاز نهایی
+  // دسته‌بندی — مقادیر مجاز: EXCELLENT | VERY_GOOD | GOOD | AVERAGE | REJECTED
+  category      String
+
+  // اگر رد خودکار شده باشد، دلیلِ اولین قانونِ برقرارشده اینجا ذخیره می‌شود
+  rejectionReason String?
+
+  // جزئیات محاسبه به صورت JSON (کدام قوانین اجرا شدند و چه امتیازی دادند)
+  breakdown     String   @default("{}")
+
+  // نسخه موتوری که این نتیجه را تولید کرده (برای نسخه اول: "rule-engine-v1")
+  // در آینده مثلاً "ai-engine-v1" خواهد بود.
+  engineVersion String   @default("rule-engine-v1")
+
+  // ---- فیلدهای آماده برای هوش مصنوعی ----
+  aiScore    Int?
+  aiSummary  String?
+  aiAnalysis String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("assessment_results")
+}
+
+// ============================================================================
+// 9) پاسخ‌های فرم (Answer)
+// ============================================================================
+model Answer {
+  id            String   @id @default(cuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  questionId    String
+  question      Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  // مقدار پاسخ به صورت رشته ذخیره می‌شود.
+  // برای MULTI_CHOICE به صورت JSON آرایه‌ای: ["docker","k8s"]
+  // برای BOOLEAN: "true"/"false" — برای NUMBER: "5"
+  value         String?
+
+  // امتیاز کسب‌شده از این پاسخ (بعد از اجرای موتور امتیازدهی)
+  earnedPoints  Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([applicationId])
+  @@index([questionId])
+  @@map("answers")
+}
