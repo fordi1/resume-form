@@ -42,6 +42,12 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 4000;
 
-app.listen(PORT, () => {
-  console.log(`🚀 سرور روی پورت ${PORT} اجرا شد: http://localhost:${PORT}`);
-});
+// در اجرای محلی سرور روی پورت مشخص‌شده گوش می‌دهد. در Vercel این فایل توسط
+// Serverless Function import می‌شود و خود Vercel چرخه request/response را کنترل می‌کند.
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🚀 سرور روی پورت ${PORT} اجرا شد: http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;
