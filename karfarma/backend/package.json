@@ -1,15 +1,17 @@
 {
   "name": "recruitment-assessment-backend",
   "version": "1.0.0",
-  "description": "سیستم مدیریت و ارزیابی متقاضیان استخدام - Backend (Node.js + Express + Prisma + SQLite)",
+  "description": "سیستم مدیریت و ارزیابی متقاضیان استخدام - Backend (Node.js + Express + Prisma + PostgreSQL)",
   "main": "src/server.js",
   "type": "commonjs",
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev --name init",
-    "prisma:studio": "prisma studio"
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
+    "prisma:studio": "prisma studio",
+    "test:db": "node scripts/db-smoke-test.js"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
