@@ -47,7 +47,9 @@ export default function DashboardLayout({
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white">
               <Briefcase size={18} />
             </div>
-            <span className="font-bold text-slate-800">پنل کارفرما</span>
+            <span className="font-bold text-slate-800">
+              RTS <span className="font-normal text-slate-500">| پنل کارفرما</span>
+            </span>
           </Link>
           <div className="flex items-center gap-3">
             {employer?.fullName && (

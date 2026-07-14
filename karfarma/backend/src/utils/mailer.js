@@ -47,7 +47,7 @@ function buildResetPasswordHtml(resetLink) {
                     🔑 بازیابی رمز عبور
                   </h1>
                   <p style="margin:6px 0 0; color:#e0e7ff; font-size:13px;">
-                    سیستم مدیریت استخدام
+                    RTS — Resume Tracking System
                   </p>
                 </td>
               </tr>
@@ -107,9 +107,9 @@ async function sendResetPasswordEmail(to, token) {
   const resetLink = `${FRONTEND_URL}/reset-password?token=${token}`;
 
   const info = await transporter.sendMail({
-    from: process.env.MAIL_FROM || "سیستم مدیریت استخدام <no-reply@karfarma.local>",
+    from: process.env.MAIL_FROM || "RTS <no-reply@rts.local>",
     to,
-    subject: "🔑 بازیابی رمز عبور | سیستم مدیریت استخدام",
+    subject: "🔑 بازیابی رمز عبور | RTS",
     html: buildResetPasswordHtml(resetLink),
   });
 

@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "سامانه ارزیابی متقاضیان استخدام",
-  description: "سیستم مدیریت و ارزیابی متقاضیان استخدام",
+  title: "RTS | Resume Tracking System",
+  description: "سامانه مدیریت، رهگیری و ارزیابی رزومه‌ها و متقاضیان استخدام",
 };
 
 export default function RootLayout({

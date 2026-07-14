@@ -1,7 +1,7 @@
 {
-  "name": "recruitment-assessment-backend",
+  "name": "rts-backend",
   "version": "1.0.0",
-  "description": "سیستم مدیریت و ارزیابی متقاضیان استخدام - Backend (Node.js + Express + Prisma + PostgreSQL)",
+  "description": "بک‌اند RTS (Resume Tracking System) با Node.js، Express، Prisma و PostgreSQL",
   "main": "src/server.js",
   "type": "commonjs",
   "scripts": {

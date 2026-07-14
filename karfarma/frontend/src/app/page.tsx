@@ -9,9 +9,10 @@ export default function HomePage() {
           <Briefcase size={30} />
         </div>
 
-        <h1 className="text-3xl font-bold text-slate-800">
-          سامانه ارزیابی متقاضیان استخدام
-        </h1>
+        <h1 className="text-4xl font-bold text-slate-800">RTS</h1>
+        <p className="mt-1 text-sm font-semibold tracking-wide text-brand-600">
+          Resume Tracking System
+        </p>
         <p className="mt-3 text-slate-500 leading-7">
           موقعیت‌های شغلی بسازید، فرم استخدام طراحی کنید و متقاضیان را به‌صورت
           خودکار امتیازدهی و دسته‌بندی کنید.

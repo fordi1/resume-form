@@ -1,8 +1,8 @@
 {
-  "name": "recruitment-assessment-frontend",
+  "name": "rts-frontend",
   "version": "1.0.0",
   "private": true,
-  "description": "فرانت‌اند سیستم مدیریت و ارزیابی متقاضیان استخدام (Next.js + TypeScript + Tailwind)",
+  "description": "فرانت‌اند RTS (Resume Tracking System) با Next.js، TypeScript و Tailwind",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
