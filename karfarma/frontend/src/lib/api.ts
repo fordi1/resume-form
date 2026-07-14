@@ -7,8 +7,13 @@
 
 import { getToken } from "./auth";
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
+
+// با API_URL خالی، مسیر نسبی روی دامنه فعلی ساخته می‌شود؛ در صورت تنظیم متغیر
+// محیطی نیز اسلش‌های ابتدا و انتها نرمال می‌شوند تا // ناخواسته ایجاد نشود.
+function buildApiUrl(path: string): string {
+  return `${API_URL}/${path.replace(/^\/+/, "")}`;
+}
 
 // نوع خطای API برای مدیریت بهتر پیام‌ها
 export class ApiError extends Error {
@@ -40,7 +45,7 @@ async function request<T = any>(
 
   let response: Response;
   try {
-    response = await fetch(`${API_URL}${path}`, {
+    response = await fetch(buildApiUrl(path), {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
@@ -620,7 +625,7 @@ export const applicationsApi = {
 
     let response: Response;
     try {
-      response = await fetch(`${API_URL}/api/applications/apply/${slug}`, {
+      response = await fetch(buildApiUrl(`/api/applications/apply/${slug}`), {
         method: "POST",
         body: form, // Content-Type را خودِ مرورگر با boundary تنظیم می‌کند
       });
@@ -691,7 +696,7 @@ export const applicationsApi = {
   async downloadResume(jobId: string, applicationId: string, fileName?: string) {
     const token = getToken();
     const res = await fetch(
-      `${API_URL}/api/admin/jobs/${jobId}/applicants/${applicationId}/resume`,
+      buildApiUrl(`/api/admin/jobs/${jobId}/applicants/${applicationId}/resume`),
       { headers: token ? { Authorization: `Bearer ${token}` } : {} }
     );
     if (!res.ok) {
@@ -717,7 +722,9 @@ export const applicationsApi = {
   ) {
     const token = getToken();
     const res = await fetch(
-      `${API_URL}/api/admin/jobs/${jobId}/applicants/${applicationId}/answers/${questionId}/file`,
+      buildApiUrl(
+        `/api/admin/jobs/${jobId}/applicants/${applicationId}/answers/${questionId}/file`
+      ),
       { headers: token ? { Authorization: `Bearer ${token}` } : {} }
     );
     if (!res.ok) {
